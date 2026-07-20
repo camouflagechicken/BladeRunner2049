@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>THEATER UI</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh;
+            background-color: #000; color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden; display: flex; align-items: center; justify-content: center;
+            touch-action: none; /* Prevents default mobile swipe scrolling */
+        }
+
+        /* Adapting the viewport-container from your original blueprint */
+        #viewport-container {
+            position: relative; width: 100vw; max-width: 177.78vh; height: 56.25vw; max-height: 100vh;
+            background-color: #050505; box-shadow: 0 0 50px rgba(0,0,0,1);
+        }
+
+        video {
+            width: 100%; height: 100%; object-fit: contain;
+            background-color: #000; z-index: 10; position: absolute; inset: 0;
+        }
+
+        #architect-title {
+            position: absolute; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 50;
+            background: #000; transition: opacity 1.5s ease-in-out;
+        }
+
+        #architect-title h1 {
+            font-size: 2.5vw; letter-spacing: 0.5vw; font-weight: 300;
+            color: rgba(200, 200, 200, 0.8); text-transform: uppercase;
+            margin-bottom: 20px; text-align: center;
+        }
+
+        #boot-btn {
+            padding: 10px 30px; background: transparent; border: 1px solid #555;
+            color: #aaa; cursor: pointer; font-family: inherit;
+            letter-spacing: 2px; transition: all 0.3s;
+        }
+
+        #boot-btn:hover { border-color: #fff; color: #fff; }
+
+        /* Loader */
+        .spinner {
+            display: none; border: 4px solid rgba(255, 255, 255, 0.1);
+            width: 40px; height: 40px; border-radius: 50%;
+            border-left-color: #fff; animation: spin 1s linear infinite;
+            margin-top: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    </style>
+    <!-- HLS.js handles the chunked streaming logic automatically -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+
+    <div id="viewport-container">
+        
+        <div id="architect-title">
+            <h1>SYSTEM PLAYBACK</h1>
+            <button id="boot-btn">INITIALIZE FEED</button>
+            <div class="spinner" id="loading-spinner"></div>
+        </div>
+
+        <video id="cinema-screen" controls preload="none" playsinline></video>
+
+    </div>
+
+    <script>
+        const bootBtn = document.getElementById('boot-btn');
+        const titleOverlay = document.getElementById('architect-title');
+        const video = document.getElementById('cinema-screen');
+        const spinner = document.getElementById('loading-spinner');
+        
+        // PASTE YOUR HUGGINGFACE .m3u8 RAW URL HERE
+        const videoManifestUrl = 'https://huggingface.co/datasets/.../resolve/main/index.m3u8'; 
+
+        let wakeLock = null;
+
+        // Screen Wake Lock API - Keeps mobile screens alive during playback
+        const requestWakeLock = async () => {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                console.log('Wake Lock active.');
+            } catch (err) {
+                console.log(`Wake Lock Error: ${err.name}, ${err.message}`);
+            }
+        };
+
+        const releaseWakeLock = () => {
+            if (wakeLock !== null) {
+                wakeLock.release();
+                wakeLock = null;
+                console.log('Wake Lock released.');
+            }
+        };
+
+        // Initialization Protocol
+        bootBtn.addEventListener('click', () => {
+            bootBtn.style.display = 'none';
+            spinner.style.display = 'block';
+
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(videoManifestUrl);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    startPlayback();
+                });
+            } 
+            // Native Safari/iOS support for HLS
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = videoManifestUrl;
+                video.addEventListener('loadedmetadata', function() {
+                    startPlayback();
+                });
+            }
+        });
+
+        function startPlayback() {
+            requestWakeLock();
+            video.play().then(() => {
+                // Fade out overlay perfectly matching your emulator logic
+                titleOverlay.style.opacity = '0';
+                setTimeout(() => {
+                    titleOverlay.style.display = 'none';
+                    // Auto-fullscreen on mobile
+                    if (window.innerWidth <= 768) {
+                        if (video.requestFullscreen) video.requestFullscreen();
+                        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen(); // Safari
+                    }
+                }, 1500);
+            }).catch(e => {
+                console.error("Autoplay blocked:", e);
+                spinner.style.display = 'none';
+                bootBtn.style.display = 'block';
+                bootBtn.innerText = "OVERRIDE AUTOPLAY BLOCK";
+            });
+        }
+
+        // Logic Controls: Hotkeys
+        document.addEventListener('keydown', (e) => {
+            if (titleOverlay.style.display !== 'none') return; // Only process if video is active
+
+            switch(e.code) {
+                case 'Space':
+                case 'KeyK':
+                    e.preventDefault();
+                    video.paused ? video.play() : video.pause();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    video.currentTime = Math.min(video.duration, video.currentTime + 10);
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    video.currentTime = Math.max(0, video.currentTime - 10);
+                    break;
+                case 'KeyF':
+                    e.preventDefault();
+                    if (!document.fullscreenElement) {
+                        video.requestFullscreen().catch(err => {});
+                    } else {
+                        document.exitFullscreen();
+                    }
+                    break;
+            }
+        });
+
+        // Mobile Double Tap to Skip (Left/Right side of screen)
+        let lastTap = 0;
+        video.addEventListener('touchstart', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            
+            if (tapLength < 300 && tapLength > 0) {
+                const touchX = e.changedTouches[0].clientX;
+                const screenWidth = window.innerWidth;
+                
+                // If tapped on right half, skip forward. Left half, skip back.
+                if (touchX > screenWidth / 2) {
+                    video.currentTime = Math.min(video.duration, video.currentTime + 10);
+                } else {
+                    video.currentTime = Math.max(0, video.currentTime - 10);
+                }
+                e.preventDefault();
+            }
+            lastTap = currentTime;
+        }, {passive: false});
+
+        // Manage Wake Lock based on playback state
+        video.addEventListener('play', requestWakeLock);
+        video.addEventListener('pause', releaseWakeLock);
+        video.addEventListener('ended', releaseWakeLock);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && !video.paused) {
+                requestWakeLock();
+            }
+        });
+    </script>
+</body>
+</html>
