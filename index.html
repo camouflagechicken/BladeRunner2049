@@ -70,11 +70,11 @@
             cursor: none !important;
         }
 
-        /* Video element - Supports Edge-to-Edge Fill & Fit Modes */
+        /* Video element - Base object-fit: contain (Cinema 21:9 full frame black bars) */
         video {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* Default to Zoom Fill for edge-to-edge mobile screens */
+            object-fit: contain;
             background-color: #000;
             display: block;
             transition: object-fit 0.3s ease;
@@ -896,10 +896,11 @@
                             </div>
                         </div>
 
-                        <!-- Aspect Ratio Fill Toggle (Edge-to-Edge Zoom vs Fit) -->
-                        <button class="ctrl-btn" id="btn-aspect" title="Aspect Ratio: Edge-to-Edge Zoom / Fit">
+                        <!-- Aspect Ratio Toggle: 21:9 Cinema (Fit) vs 16:9 Fill -->
+                        <button class="ctrl-btn" id="btn-aspect" title="Aspect Ratio: 21:9 Cinema / 16:9 Fill">
                             <svg viewBox="0 0 24 24" id="aspect-icon">
-                                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+                                <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                                <path d="M7 12h10"></path>
                             </svg>
                         </button>
 
@@ -972,6 +973,12 @@
         const fallbackHls = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
         const fallbackMp4 = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
 
+        // Device Detection (Mobile vs Desktop)
+        const isMobileDevice = window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
+        // Aspect Mode: Desktop defaults to 'contain' (21:9 Cinema black bars, 0 cut pixels). Mobile defaults to 'cover' (16:9 Fill).
+        let aspectMode = isMobileDevice ? 'cover' : 'contain';
+
         // State Variables
         let hlsInstance = null;
         let isScreenLocked = false;
@@ -982,7 +989,6 @@
         let isSwiping = false;
         let storedVolume = 1.0;
         let hlsLevels = [];
-        let aspectMode = 'cover'; // Default to Edge-to-Edge Zoom Fill for modern smartphones
 
         // Single vs Double Click Handling for Video Area
         let clickTimer = null;
@@ -1006,6 +1012,26 @@
             return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
         }
 
+        // Apply Initial & Toggled Aspect Ratio
+        function applyAspectMode() {
+            video.style.objectFit = aspectMode;
+        }
+
+        // Toggle Aspect Ratio: 21:9 Cinema (Fit / Black Bars) vs 16:9 Fill
+        function toggleAspectMode() {
+            if (aspectMode === 'contain') {
+                aspectMode = 'cover';
+                video.style.objectFit = 'cover';
+                showHud('📺', '16:9 Fill (Edge to Edge)');
+            } else {
+                aspectMode = 'contain';
+                video.style.objectFit = 'contain';
+                showHud('🎬', '21:9 Cinema (Fit - Black Bars)');
+            }
+        }
+
+        btnAspect.addEventListener('click', toggleAspectMode);
+
         // Lock Orientation to Landscape on Mobile Devices
         async function lockLandscapeOrientation() {
             try {
@@ -1026,21 +1052,6 @@
 
         btnForceLandscape.addEventListener('click', lockLandscapeOrientation);
 
-        // Aspect Ratio Toggle: Zoom Fill (Cover) vs Fit Screen (Contain)
-        function toggleAspectMode() {
-            if (aspectMode === 'cover') {
-                aspectMode = 'contain';
-                video.style.objectFit = 'contain';
-                showHud('📐', 'Aspect: Fit (Original)');
-            } else {
-                aspectMode = 'cover';
-                video.style.objectFit = 'cover';
-                showHud('↔️', 'Aspect: Zoom Fill (Edge-to-Edge)');
-            }
-        }
-
-        btnAspect.addEventListener('click', toggleAspectMode);
-
         // Show Center HUD Badge
         let hudTimeout = null;
         function showHud(icon, text) {
@@ -1055,6 +1066,8 @@
 
         // Initialize Video Player
         function initPlayer() {
+            applyAspectMode();
+
             if (Hls.isSupported()) {
                 hlsInstance = new Hls({
                     enableWorker: true,
