@@ -1,207 +1,1414 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>THEATER UI</title>
+    <title>BLADE RUNNER 2049</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- HLS.js for stream playback -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        body, html {
-            margin: 0; padding: 0; width: 100vw; height: 100vh;
-            background-color: #000; color: #fff;
-            font-family: 'Courier New', Courier, monospace;
-            overflow: hidden; display: flex; align-items: center; justify-content: center;
-            touch-action: none; /* Prevents default mobile swipe scrolling */
+        :root {
+            --bg-color: #050508;
+            --accent-color: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.4);
+            --panel-bg: rgba(15, 15, 22, 0.75);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --progress-bg: rgba(255, 255, 255, 0.2);
+            --buffer-bg: rgba(255, 255, 255, 0.4);
+            --control-radius: 12px;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
-        /* Adapting the viewport-container from your original blueprint */
-        #viewport-container {
-            position: relative; width: 100vw; max-width: 177.78vh; height: 56.25vw; max-height: 100vh;
-            background-color: #050505; box-shadow: 0 0 50px rgba(0,0,0,1);
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Main Player Container */
+        .player-wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 100vw;
+            max-height: 100vh;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: default;
+        }
+
+        /* Hide Cursor completely when controls auto-hide */
+        .player-wrapper.hide-cursor,
+        .player-wrapper.hide-cursor * {
+            cursor: none !important;
         }
 
         video {
-            width: 100%; height: 100%; object-fit: contain;
-            background-color: #000; z-index: 10; position: absolute; inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background-color: #000;
+            display: block;
         }
 
-        #architect-title {
-            position: absolute; inset: 0; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 50;
-            background: #000; transition: opacity 1.5s ease-in-out;
+        /* Unmute Banner (Top Floating) */
+        .unmute-banner {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: rgba(99, 102, 241, 0.9);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        #architect-title h1 {
-            font-size: 2.5vw; letter-spacing: 0.5vw; font-weight: 300;
-            color: rgba(200, 200, 200, 0.8); text-transform: uppercase;
-            margin-bottom: 20px; text-align: center;
+        .unmute-banner.visible {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
         }
 
-        #boot-btn {
-            padding: 10px 30px; background: transparent; border: 1px solid #555;
-            color: #aaa; cursor: pointer; font-family: inherit;
-            letter-spacing: 2px; transition: all 0.3s;
+        .unmute-banner:hover {
+            background: #4f46e5;
+            transform: translateX(-50%) scale(1.03);
         }
 
-        #boot-btn:hover { border-color: #fff; color: #fff; }
-
-        /* Loader */
-        .spinner {
-            display: none; border: 4px solid rgba(255, 255, 255, 0.1);
-            width: 40px; height: 40px; border-radius: 50%;
-            border-left-color: #fff; animation: spin 1s linear infinite;
-            margin-top: 20px;
+        /* Center Action HUD Popup */
+        .hud-badge {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            color: #fff;
+            padding: 14px 28px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px);
+            z-index: 90;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+        .hud-badge.visible {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* Mobile Double Tap Ripples */
+        .tap-ripple {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 40%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 18px;
+            font-weight: 600;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+            z-index: 45;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .tap-ripple.left {
+            left: 0;
+            border-top-right-radius: 50%;
+            border-bottom-right-radius: 50%;
+        }
+
+        .tap-ripple.right {
+            right: 0;
+            border-top-left-radius: 50%;
+            border-bottom-left-radius: 50%;
+        }
+
+        .tap-ripple.animate {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        /* Mobile-Only Elements */
+        .mobile-only-btn {
+            display: none !important;
+        }
+
+        /* Screen Lock Indicator */
+        .lock-indicator {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            cursor: pointer;
+            z-index: 110;
+            backdrop-filter: blur(16px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .lock-indicator.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .lock-indicator.active {
+            background: rgba(239, 68, 68, 0.85);
+            border-color: rgba(239, 68, 68, 1);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+        }
+
+        /* Custom Controls Overlay */
+        .controls-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: linear-gradient(180deg, rgba(5, 5, 8, 0.7) 0%, rgba(0, 0, 0, 0) 25%, rgba(0, 0, 0, 0) 70%, rgba(5, 5, 8, 0.85) 100%);
+            z-index: 50;
+            padding: 24px;
+            opacity: 1;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+
+        .controls-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* Header Bar */
+        .controls-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .movie-title-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .movie-badge {
+            background: var(--accent-color);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .movie-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-main);
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(12px);
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            transform: translateY(-2px);
+        }
+
+        .icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        .icon-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Controls Footer */
+        .controls-footer {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            padding: 16px 20px;
+            border-radius: 16px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            cursor: default;
+        }
+
+        /* Timeline / Scrub Bar */
+        .timeline-container {
+            position: relative;
+            width: 100%;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .timeline-track {
+            position: relative;
+            width: 100%;
+            height: 6px;
+            background: var(--progress-bg);
+            border-radius: 4px;
+            overflow: hidden;
+            transition: height 0.2s ease;
+        }
+
+        .timeline-container:hover .timeline-track {
+            height: 8px;
+        }
+
+        .timeline-buffered {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: var(--buffer-bg);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s linear;
+        }
+
+        .timeline-played {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: var(--accent-color);
+            border-radius: 4px;
+            width: 0%;
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        .timeline-thumb {
+            position: absolute;
+            top: 50%;
+            left: 0%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 16px;
+            height: 16px;
+            background: #fff;
+            border: 3px solid var(--accent-color);
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s ease;
+            z-index: 10;
+        }
+
+        .timeline-container:hover .timeline-thumb {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* Timeline Tooltip */
+        .timeline-tooltip {
+            position: absolute;
+            bottom: 28px;
+            transform: translateX(-50%);
+            background: rgba(15, 15, 22, 0.95);
+            border: 1px solid var(--panel-border);
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .timeline-container:hover .timeline-tooltip {
+            opacity: 1;
+        }
+
+        /* Controls Bottom Bar */
+        .controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .controls-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .ctrl-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-sub);
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .ctrl-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .ctrl-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .ctrl-btn.play-btn svg {
+            fill: currentColor;
+            stroke: none;
+        }
+
+        /* Volume Slider Container */
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+        }
+
+        .volume-slider-wrapper {
+            width: 0;
+            overflow: hidden;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .volume-container:hover .volume-slider-wrapper {
+            width: 70px;
+        }
+
+        .volume-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 65px;
+            height: 4px;
+            background: var(--progress-bg);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        }
+
+        /* Time Display */
+        .time-display {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-sub);
+            margin-left: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .time-display span {
+            color: var(--text-main);
+        }
+
+        /* Dropdown Selectors (Speed, Quality) */
+        .dropdown-menu-wrapper {
+            position: relative;
+        }
+
+        .pill-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .pill-btn:hover {
+            background: rgba(255, 255, 255, 0.18);
+            color: #fff;
+        }
+
+        .menu-popup {
+            position: absolute;
+            bottom: 45px;
+            right: 0;
+            background: rgba(18, 18, 26, 0.95);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.2s ease;
+            z-index: 100;
+            min-width: 110px;
+        }
+
+        .menu-popup.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .menu-item {
+            padding: 8px 12px;
+            font-size: 13px;
+            color: var(--text-sub);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .menu-item.active {
+            color: var(--accent-hover);
+            font-weight: 600;
+        }
+
+        /* Resume Watch Position Toast */
+        .resume-toast {
+            position: absolute;
+            bottom: 100px;
+            left: 24px;
+            background: rgba(18, 18, 26, 0.95);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(16px);
+            z-index: 95;
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .resume-toast.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .resume-toast p {
+            font-size: 13px;
+            color: var(--text-main);
+        }
+
+        .resume-btn {
+            background: var(--accent-color);
+            border: none;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .resume-dismiss {
+            background: transparent;
+            border: none;
+            color: var(--text-sub);
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .mobile-only-btn {
+                display: flex !important;
+            }
+            .controls-overlay {
+                padding: 16px;
+            }
+            .controls-footer {
+                padding: 12px 14px;
+                gap: 10px;
+            }
+            .volume-container {
+                display: none;
+            }
+            .movie-title {
+                font-size: 15px;
+            }
+            .time-display {
+                font-size: 11px;
+            }
+        }
     </style>
-    <!-- HLS.js handles the chunked streaming logic automatically -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
+
 <body>
 
-    <div id="viewport-container">
-        
-        <div id="architect-title">
-            <h1>SYSTEM PLAYBACK</h1>
-            <button id="boot-btn">INITIALIZE FEED</button>
-            <div class="spinner" id="loading-spinner"></div>
+    <div class="player-wrapper" id="player-wrapper">
+        <!-- Unmute Top Banner -->
+        <div class="unmute-banner" id="unmute-banner">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+            <span>Playing Muted — Tap to Unmute</span>
         </div>
 
-        <video id="cinema-screen" controls preload="none" playsinline></video>
+        <!-- Center HUD Badge -->
+        <div class="hud-badge" id="hud-badge">
+            <span id="hud-icon">🔊</span>
+            <span id="hud-text">100%</span>
+        </div>
 
+        <!-- Screen Lock Floating Toggle (Mobile Only) -->
+        <div class="lock-indicator" id="lock-indicator" title="Tap to Unlock Screen">
+            <svg id="lock-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+            </svg>
+        </div>
+
+        <!-- Double Tap Ripples -->
+        <div class="tap-ripple left" id="ripple-left">
+            <span style="font-size: 24px;">⏮️</span>
+            <span>-10s</span>
+        </div>
+        <div class="tap-ripple right" id="ripple-right">
+            <span style="font-size: 24px;">⏭️</span>
+            <span>+10s</span>
+        </div>
+
+        <!-- Resume Toast -->
+        <div class="resume-toast" id="resume-toast">
+            <p>Resume watching from <b id="resume-time-str">00:00</b>?</p>
+            <button class="resume-btn" id="resume-accept-btn">Resume</button>
+            <button class="resume-dismiss" id="resume-dismiss-btn">✕</button>
+        </div>
+
+        <!-- HTML5 Video Tag -->
+        <video id="video-screen" preload="auto" playsinline webkit-playsinline></video>
+
+        <!-- Custom Controls Overlay -->
+        <div class="controls-overlay" id="controls-overlay">
+            <!-- Header Bar -->
+            <div class="controls-header">
+                <div class="movie-title-box">
+                    <span class="movie-badge">MOVIE</span>
+                    <h1 class="movie-title">BLADE RUNNER 2049</h1>
+                </div>
+
+                <div class="header-actions">
+                    <!-- Mobile-Only Lock Screen Header Button -->
+                    <button class="icon-btn mobile-only-btn" id="btn-lock" title="Lock Screen">
+                        <svg viewBox="0 0 24 24">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Footer Controls -->
+            <div class="controls-footer">
+                <!-- Timeline Scrub Bar -->
+                <div class="timeline-container" id="timeline-container">
+                    <div class="timeline-tooltip" id="timeline-tooltip">00:00</div>
+                    <div class="timeline-track">
+                        <div class="timeline-buffered" id="timeline-buffered"></div>
+                        <div class="timeline-played" id="timeline-played"></div>
+                    </div>
+                    <div class="timeline-thumb" id="timeline-thumb"></div>
+                </div>
+
+                <!-- Controls Bottom Row -->
+                <div class="controls-row">
+                    <!-- Left Control Group -->
+                    <div class="controls-group">
+                        <button class="ctrl-btn play-btn" id="btn-play" title="Play/Pause (Space)">
+                            <svg viewBox="0 0 24 24" id="play-icon">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                        </button>
+
+                        <button class="ctrl-btn" id="btn-rewind" title="Rewind 10s (← / J)">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M11 19l-9-7 9-7v14zM22 19l-9-7 9-7v14z"></path>
+                            </svg>
+                        </button>
+
+                        <button class="ctrl-btn" id="btn-forward" title="Forward 10s (→ / L)">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M13 5l9 7-9 7V5zM2 5l9 7-9 7V5z"></path>
+                            </svg>
+                        </button>
+
+                        <!-- Volume -->
+                        <div class="volume-container">
+                            <button class="ctrl-btn" id="btn-volume" title="Mute (M)">
+                                <svg viewBox="0 0 24 24" id="volume-icon">
+                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                </svg>
+                            </button>
+                            <div class="volume-slider-wrapper">
+                                <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.05" value="1">
+                            </div>
+                        </div>
+
+                        <!-- Time Display -->
+                        <div class="time-display">
+                            <span id="time-current">00:00</span> / <span id="time-duration">00:00</span>
+                        </div>
+                    </div>
+
+                    <!-- Right Control Group -->
+                    <div class="controls-group">
+                        <!-- Speed Selector -->
+                        <div class="dropdown-menu-wrapper">
+                            <button class="pill-btn" id="btn-speed">
+                                <span id="speed-label">1.0x</span>
+                            </button>
+                            <div class="menu-popup" id="speed-menu">
+                                <div class="menu-item" data-speed="0.5">0.5x</div>
+                                <div class="menu-item" data-speed="0.75">0.75x</div>
+                                <div class="menu-item active" data-speed="1.0">1.0x Normal</div>
+                                <div class="menu-item" data-speed="1.25">1.25x</div>
+                                <div class="menu-item" data-speed="1.5">1.5x</div>
+                                <div class="menu-item" data-speed="2.0">2.0x</div>
+                            </div>
+                        </div>
+
+                        <!-- Quality Selector -->
+                        <div class="dropdown-menu-wrapper">
+                            <button class="pill-btn" id="btn-quality">
+                                <span id="quality-label">Auto</span>
+                            </button>
+                            <div class="menu-popup" id="quality-menu">
+                                <div class="menu-item active" data-quality="-1">Auto</div>
+                            </div>
+                        </div>
+
+                        <!-- Picture in Picture -->
+                        <button class="ctrl-btn" id="btn-pip" title="Picture in Picture (P)">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                <rect x="12" y="11" width="8" height="7" rx="1" fill="currentColor"></rect>
+                            </svg>
+                        </button>
+
+                        <!-- Fullscreen -->
+                        <button class="ctrl-btn" id="btn-fullscreen" title="Fullscreen (F)">
+                            <svg viewBox="0 0 24 24" id="fullscreen-icon">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Main Logic Script -->
     <script>
-        const bootBtn = document.getElementById('boot-btn');
-        const titleOverlay = document.getElementById('architect-title');
-        const video = document.getElementById('cinema-screen');
-        const spinner = document.getElementById('loading-spinner');
-        
-        // PASTE YOUR HUGGINGFACE .m3u8 RAW URL HERE
-        const videoManifestUrl = 'https://huggingface.co/datasets/camouflagechicken/BladeRunnerChunks/resolve/main/index.m3u8';
+        // DOM Elements
+        const playerWrapper = document.getElementById('player-wrapper');
+        const video = document.getElementById('video-screen');
+        const controlsOverlay = document.getElementById('controls-overlay');
+        const btnPlay = document.getElementById('btn-play');
+        const playIcon = document.getElementById('play-icon');
+        const btnRewind = document.getElementById('btn-rewind');
+        const btnForward = document.getElementById('btn-forward');
+        const btnVolume = document.getElementById('btn-volume');
+        const volumeIcon = document.getElementById('volume-icon');
+        const volumeSlider = document.getElementById('volume-slider');
+        const timeCurrent = document.getElementById('time-current');
+        const timeDuration = document.getElementById('time-duration');
+        const timelineContainer = document.getElementById('timeline-container');
+        const timelinePlayed = document.getElementById('timeline-played');
+        const timelineBuffered = document.getElementById('timeline-buffered');
+        const timelineThumb = document.getElementById('timeline-thumb');
+        const timelineTooltip = document.getElementById('timeline-tooltip');
+        const unmuteBanner = document.getElementById('unmute-banner');
+        const hudBadge = document.getElementById('hud-badge');
+        const hudIcon = document.getElementById('hud-icon');
+        const hudText = document.getElementById('hud-text');
+        const lockIndicator = document.getElementById('lock-indicator');
+        const btnLock = document.getElementById('btn-lock');
+        const rippleLeft = document.getElementById('ripple-left');
+        const rippleRight = document.getElementById('ripple-right');
+        const btnSpeed = document.getElementById('btn-speed');
+        const speedLabel = document.getElementById('speed-label');
+        const speedMenu = document.getElementById('speed-menu');
+        const btnQuality = document.getElementById('btn-quality');
+        const qualityLabel = document.getElementById('quality-label');
+        const qualityMenu = document.getElementById('quality-menu');
+        const btnPip = document.getElementById('btn-pip');
+        const btnFullscreen = document.getElementById('btn-fullscreen');
+        const resumeToast = document.getElementById('resume-toast');
+        const resumeTimeStr = document.getElementById('resume-time-str');
+        const resumeAcceptBtn = document.getElementById('resume-accept-btn');
+        const resumeDismissBtn = document.getElementById('resume-dismiss-btn');
 
-        let wakeLock = null;
+        // Manifest & Sources (Primary HLS + Fallbacks)
+        const primaryManifest = 'https://huggingface.co/datasets/camouflagechicken/BladeRunnerChunks/resolve/main/index.m3u8';
+        const fallbackHls = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+        const fallbackMp4 = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
 
-        // Screen Wake Lock API - Keeps mobile screens alive during playback
-        const requestWakeLock = async () => {
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-                console.log('Wake Lock active.');
-            } catch (err) {
-                console.log(`Wake Lock Error: ${err.name}, ${err.message}`);
+        // State Variables
+        let hlsInstance = null;
+        let isScreenLocked = false;
+        let controlsTimeout = null;
+        let brightnessLevel = 1.0;
+        let lastTapTime = 0;
+        let touchStartX = 0, touchStartY = 0;
+        let isSwiping = false;
+        let storedVolume = 1.0;
+        let hlsLevels = [];
+
+        // Single vs Double Click Handling for Video Area
+        let clickTimer = null;
+        let clickCount = 0;
+
+        // SVG Path Constants
+        const playSvg = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+        const pauseSvg = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+        const volumeHighSvg = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>';
+        const volumeMuteSvg = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>';
+
+        // Format Time (HH:MM:SS or MM:SS)
+        function formatTime(seconds) {
+            if (isNaN(seconds) || seconds < 0) return '00:00';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            if (h > 0) {
+                return `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
             }
-        };
+            return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+        }
 
-        const releaseWakeLock = () => {
-            if (wakeLock !== null) {
-                wakeLock.release();
-                wakeLock = null;
-                console.log('Wake Lock released.');
-            }
-        };
+        // Show Center HUD Badge
+        let hudTimeout = null;
+        function showHud(icon, text) {
+            hudIcon.textContent = icon;
+            hudText.textContent = text;
+            hudBadge.classList.add('visible');
+            clearTimeout(hudTimeout);
+            hudTimeout = setTimeout(() => {
+                hudBadge.classList.remove('visible');
+            }, 1200);
+        }
 
-        // Initialization Protocol
-        bootBtn.addEventListener('click', () => {
-            bootBtn.style.display = 'none';
-            spinner.style.display = 'block';
-
+        // Initialize Video Player
+        function initPlayer() {
             if (Hls.isSupported()) {
-                const hls = new Hls();
-                hls.loadSource(videoManifestUrl);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    startPlayback();
+                hlsInstance = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true
                 });
-            } 
-            // Native Safari/iOS support for HLS
-            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = videoManifestUrl;
-                video.addEventListener('loadedmetadata', function() {
-                    startPlayback();
-                });
-            }
-        });
+                hlsInstance.loadSource(primaryManifest);
+                hlsInstance.attachMedia(video);
 
-        function startPlayback() {
-            requestWakeLock();
-            video.play().then(() => {
-                // Fade out overlay perfectly matching your emulator logic
-                titleOverlay.style.opacity = '0';
-                setTimeout(() => {
-                    titleOverlay.style.display = 'none';
-                    // Auto-fullscreen on mobile
-                    if (window.innerWidth <= 768) {
-                        if (video.requestFullscreen) video.requestFullscreen();
-                        else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen(); // Safari
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                    setupQualityLevels(data.levels);
+                    attemptInstantAutoplay();
+                });
+
+                hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        console.warn("Primary HLS stream failed, trying fallback stream...", data);
+                        hlsInstance.loadSource(fallbackHls);
                     }
-                }, 1500);
-            }).catch(e => {
-                console.error("Autoplay blocked:", e);
-                spinner.style.display = 'none';
-                bootBtn.style.display = 'block';
-                bootBtn.innerText = "OVERRIDE AUTOPLAY BLOCK";
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = primaryManifest;
+                video.addEventListener('loadedmetadata', attemptInstantAutoplay);
+            } else {
+                video.src = fallbackMp4;
+                attemptInstantAutoplay();
+            }
+        }
+
+        // Setup Quality Levels Dropdown
+        function setupQualityLevels(levels) {
+            hlsLevels = levels || [];
+            qualityMenu.innerHTML = '<div class="menu-item active" data-quality="-1">Auto</div>';
+            hlsLevels.forEach((level, index) => {
+                const height = level.height || 'SD';
+                const item = document.createElement('div');
+                item.className = 'menu-item';
+                item.dataset.quality = index;
+                item.textContent = `${height}p`;
+                item.addEventListener('click', () => setQuality(index, `${height}p`, item));
+                qualityMenu.appendChild(item);
             });
         }
 
-        // Logic Controls: Hotkeys
-        document.addEventListener('keydown', (e) => {
-            if (titleOverlay.style.display !== 'none') return; // Only process if video is active
+        function setQuality(index, label, el) {
+            if (hlsInstance) {
+                hlsInstance.currentLevel = parseInt(index);
+                qualityLabel.textContent = label;
+                qualityMenu.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+                if (el) el.classList.add('active');
+                qualityMenu.classList.remove('open');
+                showHud('⚙️', `Quality: ${label}`);
+            }
+        }
 
-            switch(e.code) {
-                case 'Space':
-                case 'KeyK':
-                    e.preventDefault();
-                    video.paused ? video.play() : video.pause();
-                    break;
-                case 'ArrowRight':
-                    e.preventDefault();
-                    video.currentTime = Math.min(video.duration, video.currentTime + 10);
-                    break;
-                case 'ArrowLeft':
-                    e.preventDefault();
-                    video.currentTime = Math.max(0, video.currentTime - 10);
-                    break;
-                case 'KeyF':
-                    e.preventDefault();
-                    if (!document.fullscreenElement) {
-                        video.requestFullscreen().catch(err => {});
-                    } else {
-                        document.exitFullscreen();
-                    }
-                    break;
+        // Instant Autoplay Logic (Unmuted first, then Muted fallback)
+        function attemptInstantAutoplay() {
+            checkSavedProgress();
+
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    resetControlsTimeout();
+                }).catch(err => {
+                    console.log("Unmuted autoplay restricted by browser policy. Falling back to muted autoplay.");
+                    video.muted = true;
+                    video.play().then(() => {
+                        updateVolumeIcon();
+                    }).catch(e => {
+                        console.log("Muted autoplay blocked as well:", e);
+                    });
+                });
+            }
+        }
+
+        // Unmute Banner Click
+        unmuteBanner.addEventListener('click', () => {
+            video.muted = false;
+            video.volume = storedVolume || 1.0;
+            updateVolumeIcon();
+            showHud('🔊', 'Unmuted');
+        });
+
+        // Resume Watch Progress from LocalStorage
+        function checkSavedProgress() {
+            const savedTime = localStorage.getItem('cinema_player_pos');
+            if (savedTime && parseFloat(savedTime) > 10) {
+                const timeSec = parseFloat(savedTime);
+                resumeTimeStr.textContent = formatTime(timeSec);
+                resumeToast.classList.add('visible');
+
+                resumeAcceptBtn.onclick = () => {
+                    video.currentTime = timeSec;
+                    resumeToast.classList.remove('visible');
+                    showHud('⏩', `Resumed at ${formatTime(timeSec)}`);
+                };
+
+                resumeDismissBtn.onclick = () => {
+                    localStorage.removeItem('cinema_player_pos');
+                    resumeToast.classList.remove('visible');
+                };
+            }
+        }
+
+        // Auto Save Watch Progress
+        video.addEventListener('timeupdate', () => {
+            if (video.currentTime > 5 && !video.ended) {
+                localStorage.setItem('cinema_player_pos', video.currentTime);
             }
         });
 
-        // Mobile Double Tap to Skip (Left/Right side of screen)
-        let lastTap = 0;
-        video.addEventListener('touchstart', (e) => {
-            const currentTime = new Date().getTime();
-            const tapLength = currentTime - lastTap;
-            
-            if (tapLength < 300 && tapLength > 0) {
-                const touchX = e.changedTouches[0].clientX;
-                const screenWidth = window.innerWidth;
-                
-                // If tapped on right half, skip forward. Left half, skip back.
-                if (touchX > screenWidth / 2) {
-                    video.currentTime = Math.min(video.duration, video.currentTime + 10);
+        // Wake Lock API (Keep Phone Screen On)
+        let wakeLock = null;
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {}
+        }
+        video.addEventListener('play', requestWakeLock);
+
+        // Toggle Play / Pause
+        function togglePlay() {
+            if (isScreenLocked) return;
+            if (video.paused) {
+                video.play();
+            } else {
+                video.pause();
+            }
+        }
+
+        // Play/Pause State Sync
+        video.addEventListener('play', () => {
+            playIcon.innerHTML = pauseSvg;
+            resetControlsTimeout();
+        });
+
+        video.addEventListener('pause', () => {
+            playIcon.innerHTML = playSvg;
+            showControls();
+        });
+
+        btnPlay.addEventListener('click', togglePlay);
+
+        // Handle Single-Click (Play/Pause) vs Double-Click (Fullscreen) on Video Area
+        playerWrapper.addEventListener('click', (e) => {
+            if (isScreenLocked) return;
+
+            // Ignore clicks on control panels, menus, sliders, toasts
+            if (e.target.closest('.controls-footer') || 
+                e.target.closest('.controls-header') || 
+                e.target.closest('.unmute-banner') || 
+                e.target.closest('.resume-toast') || 
+                e.target.closest('.lock-indicator') ||
+                e.target.closest('.menu-popup') ||
+                e.target.closest('.pill-btn')) {
+                return;
+            }
+
+            clickCount++;
+            if (clickCount === 1) {
+                clickTimer = setTimeout(() => {
+                    clickCount = 0;
+                    togglePlay();
+                }, 240);
+            } else if (clickCount >= 2) {
+                clearTimeout(clickTimer);
+                clickCount = 0;
+                toggleFullscreen();
+            }
+        });
+
+        // Skip Time (+/- 10s)
+        function skipTime(amount) {
+            if (isScreenLocked) return;
+            video.currentTime = Math.max(0, Math.min(video.duration || 0, video.currentTime + amount));
+            if (amount > 0) {
+                triggerRipple('right');
+            } else {
+                triggerRipple('left');
+            }
+        }
+
+        btnRewind.addEventListener('click', () => skipTime(-10));
+        btnForward.addEventListener('click', () => skipTime(10));
+
+        // Animated Double Tap Ripples
+        function triggerRipple(side) {
+            const ripple = side === 'left' ? rippleLeft : rippleRight;
+            ripple.classList.add('animate');
+            setTimeout(() => ripple.classList.remove('animate'), 400);
+        }
+
+        // Volume & Mute Controls
+        function updateVolumeIcon() {
+            if (video.muted || video.volume === 0) {
+                volumeIcon.innerHTML = volumeMuteSvg;
+                volumeSlider.value = 0;
+                unmuteBanner.classList.add('visible');
+            } else {
+                volumeIcon.innerHTML = volumeHighSvg;
+                volumeSlider.value = video.volume;
+                unmuteBanner.classList.remove('visible');
+            }
+        }
+
+        btnVolume.addEventListener('click', () => {
+            if (isScreenLocked) return;
+            video.muted = !video.muted;
+            if (!video.muted && video.volume === 0) video.volume = 1;
+            updateVolumeIcon();
+            showHud(video.muted ? '🔇' : '🔊', video.muted ? 'Muted' : `${Math.round(video.volume * 100)}%`);
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            if (isScreenLocked) return;
+            const val = parseFloat(e.target.value);
+            video.volume = val;
+            video.muted = (val === 0);
+            storedVolume = val > 0 ? val : storedVolume;
+            updateVolumeIcon();
+            showHud(val === 0 ? '🔇' : '🔊', `${Math.round(val * 100)}%`);
+        });
+
+        // Update Timeline Progress
+        video.addEventListener('timeupdate', () => {
+            if (!video.duration) return;
+            const percentage = (video.currentTime / video.duration) * 100;
+            timelinePlayed.style.width = `${percentage}%`;
+            timelineThumb.style.left = `${percentage}%`;
+            timeCurrent.textContent = formatTime(video.currentTime);
+            timeDuration.textContent = formatTime(video.duration);
+
+            if (video.buffered.length > 0) {
+                const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+                timelineBuffered.style.width = `${(bufferedEnd / video.duration) * 100}%`;
+            }
+        });
+
+        // Timeline Scrubbing & Hover Tooltip
+        let isScrubbing = false;
+
+        function handleTimelineScrub(e) {
+            if (isScreenLocked || !video.duration) return;
+            const rect = timelineContainer.getBoundingClientRect();
+            const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            video.currentTime = pos * video.duration;
+        }
+
+        timelineContainer.addEventListener('mousedown', (e) => {
+            isScrubbing = true;
+            handleTimelineScrub(e);
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isScrubbing) handleTimelineScrub(e);
+
+            const rect = timelineContainer.getBoundingClientRect();
+            if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                const targetSec = pos * (video.duration || 0);
+                timelineTooltip.textContent = formatTime(targetSec);
+                timelineTooltip.style.left = `${pos * 100}%`;
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isScrubbing) isScrubbing = false;
+        });
+
+        // Touch Scrubbing for Mobile
+        timelineContainer.addEventListener('touchstart', (e) => {
+            isScrubbing = true;
+            if (e.touches.length > 0) handleTimelineScrub(e.touches[0]);
+        });
+        timelineContainer.addEventListener('touchmove', (e) => {
+            if (isScrubbing && e.touches.length > 0) handleTimelineScrub(e.touches[0]);
+        });
+        timelineContainer.addEventListener('touchend', () => isScrubbing = false);
+
+        // Speed Selector
+        btnSpeed.addEventListener('click', (e) => {
+            e.stopPropagation();
+            speedMenu.classList.toggle('open');
+            qualityMenu.classList.remove('open');
+        });
+
+        speedMenu.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const spd = parseFloat(item.dataset.speed);
+                video.playbackRate = spd;
+                speedLabel.textContent = `${spd}x`;
+                speedMenu.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+                item.classList.add('active');
+                speedMenu.classList.remove('open');
+                showHud('⚡', `Speed: ${spd}x`);
+            });
+        });
+
+        // Quality Menu Toggle
+        btnQuality.addEventListener('click', (e) => {
+            e.stopPropagation();
+            qualityMenu.classList.toggle('open');
+            speedMenu.classList.remove('open');
+        });
+
+        document.addEventListener('click', () => {
+            speedMenu.classList.remove('open');
+            qualityMenu.classList.remove('open');
+        });
+
+        // Picture-in-Picture
+        btnPip.addEventListener('click', async () => {
+            if (isScreenLocked) return;
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
                 } else {
-                    video.currentTime = Math.max(0, video.currentTime - 10);
+                    await video.requestPictureInPicture();
+                }
+            } catch (err) {}
+        });
+
+        // Fullscreen Toggle
+        function toggleFullscreen() {
+            if (isScreenLocked) return;
+            if (!document.fullscreenElement) {
+                playerWrapper.requestFullscreen().catch(err => {});
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        btnFullscreen.addEventListener('click', toggleFullscreen);
+
+        // Screen Lock Toggle (Mobile-Only Quality of Life)
+        function toggleScreenLock() {
+            isScreenLocked = !isScreenLocked;
+            if (isScreenLocked) {
+                controlsOverlay.classList.add('hidden');
+                lockIndicator.classList.add('visible', 'active');
+                showHud('🔒', 'Controls Locked');
+            } else {
+                lockIndicator.classList.remove('visible', 'active');
+                showControls();
+                showHud('🔓', 'Controls Unlocked');
+            }
+        }
+
+        btnLock.addEventListener('click', toggleScreenLock);
+        lockIndicator.addEventListener('click', toggleScreenLock);
+
+        // Auto-Hide Controls & Mouse Cursor System
+        function showControls() {
+            if (isScreenLocked) return;
+            controlsOverlay.classList.remove('hidden');
+            playerWrapper.classList.remove('hide-cursor');
+            resetControlsTimeout();
+        }
+
+        function resetControlsTimeout() {
+            clearTimeout(controlsTimeout);
+            if (!video.paused && !speedMenu.classList.contains('open') && !qualityMenu.classList.contains('open')) {
+                controlsTimeout = setTimeout(() => {
+                    if (!video.paused) {
+                        controlsOverlay.classList.add('hidden');
+                        playerWrapper.classList.add('hide-cursor');
+                    }
+                }, 2500);
+            }
+        }
+
+        playerWrapper.addEventListener('mousemove', showControls);
+        playerWrapper.addEventListener('touchstart', showControls, { passive: true });
+
+        // Touch Gestures (Double Tap Left/Right to Skip, Vertical Swipes for Brightness / Volume)
+        playerWrapper.addEventListener('touchstart', (e) => {
+            if (isScreenLocked) return;
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            isSwiping = false;
+
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTapTime;
+            const screenWidth = window.innerWidth;
+
+            if (tapLength < 300 && tapLength > 0) {
+                if (touchStartX < screenWidth * 0.45) {
+                    skipTime(-10);
+                } else if (touchStartX > screenWidth * 0.55) {
+                    skipTime(10);
                 }
                 e.preventDefault();
             }
-            lastTap = currentTime;
-        }, {passive: false});
+            lastTapTime = currentTime;
+        }, { passive: false });
 
-        // Manage Wake Lock based on playback state
-        video.addEventListener('play', requestWakeLock);
-        video.addEventListener('pause', releaseWakeLock);
-        video.addEventListener('ended', releaseWakeLock);
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && !video.paused) {
-                requestWakeLock();
+        playerWrapper.addEventListener('touchmove', (e) => {
+            if (isScreenLocked || e.touches.length === 0) return;
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - touchStartX;
+            const deltaY = touch.clientY - touchStartY;
+            const screenWidth = window.innerWidth;
+
+            if (Math.abs(deltaY) > 20 && Math.abs(deltaY) > Math.abs(deltaX)) {
+                isSwiping = true;
+                const change = -deltaY / 300;
+
+                // Left side: Brightness
+                if (touchStartX < screenWidth * 0.5) {
+                    brightnessLevel = Math.max(0.2, Math.min(1.8, brightnessLevel + change));
+                    video.style.filter = `brightness(${brightnessLevel})`;
+                    showHud('☀️', `Brightness: ${Math.round((brightnessLevel / 1.5) * 100)}%`);
+                }
+                // Right side: Volume
+                else {
+                    video.volume = Math.max(0, Math.min(1, video.volume + change));
+                    video.muted = (video.volume === 0);
+                    updateVolumeIcon();
+                    showHud('🔊', `Volume: ${Math.round(video.volume * 100)}%`);
+                }
+                touchStartY = touch.clientY;
+            }
+        }, { passive: true });
+
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+            switch (e.code) {
+                case 'Space':
+                case 'KeyK':
+                    e.preventDefault();
+                    togglePlay();
+                    break;
+                case 'KeyF':
+                    e.preventDefault();
+                    toggleFullscreen();
+                    break;
+                case 'KeyM':
+                    e.preventDefault();
+                    video.muted = !video.muted;
+                    if (!video.muted && video.volume === 0) video.volume = 1;
+                    updateVolumeIcon();
+                    showHud(video.muted ? '🔇' : '🔊', video.muted ? 'Muted' : `${Math.round(video.volume * 100)}%`);
+                    break;
+                case 'ArrowRight':
+                case 'KeyL':
+                    e.preventDefault();
+                    skipTime(10);
+                    break;
+                case 'ArrowLeft':
+                case 'KeyJ':
+                    e.preventDefault();
+                    skipTime(-10);
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    video.volume = Math.min(1, video.volume + 0.1);
+                    video.muted = false;
+                    updateVolumeIcon();
+                    showHud('🔊', `${Math.round(video.volume * 100)}%`);
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    video.volume = Math.max(0, video.volume - 0.1);
+                    updateVolumeIcon();
+                    showHud('🔊', `${Math.round(video.volume * 100)}%`);
+                    break;
+                case 'KeyP':
+                    e.preventDefault();
+                    btnPip.click();
+                    break;
+                case 'Escape':
+                    // Dismiss menus if open
+                    speedMenu.classList.remove('open');
+                    qualityMenu.classList.remove('open');
+                    break;
             }
         });
+
+        // Start initialization on window load
+        window.addEventListener('load', initPlayer);
     </script>
 </body>
+
 </html>
