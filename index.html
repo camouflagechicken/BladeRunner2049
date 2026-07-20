@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>BLADE RUNNER 2049</title>
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -48,7 +48,7 @@
             justify-content: center;
         }
 
-        /* Main Player Container */
+        /* Main Player Container - Fills Entire Screen including Safe Areas */
         .player-wrapper {
             position: relative;
             width: 100vw;
@@ -70,18 +70,94 @@
             cursor: none !important;
         }
 
+        /* Video element - Supports Edge-to-Edge Fill & Fit Modes */
         video {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: cover; /* Default to Zoom Fill for edge-to-edge mobile screens */
             background-color: #000;
             display: block;
+            transition: object-fit 0.3s ease;
+        }
+
+        /* Portrait Mode Warning Overlay for Mobile */
+        .portrait-notice {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(5, 5, 8, 0.96);
+            backdrop-filter: blur(25px);
+            z-index: 300;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 30px;
+        }
+
+        @media screen and (max-width: 900px) and (orientation: portrait) {
+            .portrait-notice {
+                display: flex;
+            }
+        }
+
+        .portrait-box {
+            background: rgba(20, 20, 30, 0.9);
+            border: 1px solid var(--panel-border);
+            padding: 32px 24px;
+            border-radius: 24px;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+        }
+
+        .rotate-icon-anim {
+            color: var(--accent-color);
+            animation: pulseRotate 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseRotate {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(90deg) scale(1.1); }
+            100% { transform: rotate(90deg) scale(1); }
+        }
+
+        .portrait-box h3 {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .portrait-box p {
+            font-size: 13px;
+            color: var(--text-sub);
+            line-height: 1.5;
+        }
+
+        .rotate-btn {
+            background: var(--accent-color);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s ease;
+        }
+
+        .rotate-btn:hover {
+            background: var(--accent-hover);
         }
 
         /* Unmute Banner (Top Floating) */
         .unmute-banner {
             position: absolute;
-            top: 20px;
+            top: max(20px, env(safe-area-inset-top));
             left: 50%;
             transform: translateX(-50%) translateY(-20px);
             background: rgba(99, 102, 241, 0.9);
@@ -106,11 +182,6 @@
             opacity: 1;
             pointer-events: auto;
             transform: translateX(-50%) translateY(0);
-        }
-
-        .unmute-banner:hover {
-            background: #4f46e5;
-            transform: translateX(-50%) scale(1.03);
         }
 
         /* Center Action HUD Popup */
@@ -188,8 +259,8 @@
         /* Screen Lock Indicator */
         .lock-indicator {
             position: absolute;
-            top: 24px;
-            right: 24px;
+            top: max(24px, env(safe-area-inset-top));
+            right: max(24px, env(safe-area-inset-right));
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
             width: 44px;
@@ -218,7 +289,7 @@
             box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
         }
 
-        /* Custom Controls Overlay */
+        /* Custom Controls Overlay with Safe Area Insets for Notch / Punch Holes */
         .controls-overlay {
             position: absolute;
             inset: 0;
@@ -227,7 +298,10 @@
             justify-content: space-between;
             background: linear-gradient(180deg, rgba(5, 5, 8, 0.7) 0%, rgba(0, 0, 0, 0) 25%, rgba(0, 0, 0, 0) 70%, rgba(5, 5, 8, 0.85) 100%);
             z-index: 50;
-            padding: 24px;
+            padding-top: max(24px, env(safe-area-inset-top));
+            padding-bottom: max(24px, env(safe-area-inset-bottom));
+            padding-left: max(24px, env(safe-area-inset-left));
+            padding-right: max(24px, env(safe-area-inset-right));
             opacity: 1;
             transition: opacity 0.4s ease, visibility 0.4s ease;
         }
@@ -296,10 +370,6 @@
             background: rgba(255, 255, 255, 0.2);
             color: #fff;
             transform: translateY(-2px);
-        }
-
-        .icon-btn:active {
-            transform: scale(0.95);
         }
 
         .icon-btn svg {
@@ -594,7 +664,7 @@
         .resume-toast {
             position: absolute;
             bottom: 100px;
-            left: 24px;
+            left: max(24px, env(safe-area-inset-left));
             background: rgba(18, 18, 26, 0.95);
             border: 1px solid var(--panel-border);
             border-radius: 12px;
@@ -647,7 +717,7 @@
                 display: flex !important;
             }
             .controls-overlay {
-                padding: 16px;
+                padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
             }
             .controls-footer {
                 padding: 12px 14px;
@@ -669,6 +739,20 @@
 <body>
 
     <div class="player-wrapper" id="player-wrapper">
+        <!-- Portrait Mode Notice for Mobile Devices -->
+        <div class="portrait-notice" id="portrait-notice">
+            <div class="portrait-box">
+                <svg class="rotate-icon-anim" viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="6" y="3" width="12" height="18" rx="2"></rect>
+                    <path d="M12 17h.01"></path>
+                    <path d="M18 10l3 3m0 0l-3 3m3-3H12" stroke-linecap="round"></path>
+                </svg>
+                <h3>LANDSCAPE MODE REQUIRED</h3>
+                <p>Rotate your phone horizontally to landscape for the full cinema experience.</p>
+                <button class="rotate-btn" id="btn-force-landscape">Rotate to Landscape</button>
+            </div>
+        </div>
+
         <!-- Unmute Top Banner -->
         <div class="unmute-banner" id="unmute-banner">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -812,6 +896,13 @@
                             </div>
                         </div>
 
+                        <!-- Aspect Ratio Fill Toggle (Edge-to-Edge Zoom vs Fit) -->
+                        <button class="ctrl-btn" id="btn-aspect" title="Aspect Ratio: Edge-to-Edge Zoom / Fit">
+                            <svg viewBox="0 0 24 24" id="aspect-icon">
+                                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+                            </svg>
+                        </button>
+
                         <!-- Picture in Picture -->
                         <button class="ctrl-btn" id="btn-pip" title="Picture in Picture (P)">
                             <svg viewBox="0 0 24 24">
@@ -866,12 +957,15 @@
         const btnQuality = document.getElementById('btn-quality');
         const qualityLabel = document.getElementById('quality-label');
         const qualityMenu = document.getElementById('quality-menu');
+        const btnAspect = document.getElementById('btn-aspect');
         const btnPip = document.getElementById('btn-pip');
         const btnFullscreen = document.getElementById('btn-fullscreen');
         const resumeToast = document.getElementById('resume-toast');
         const resumeTimeStr = document.getElementById('resume-time-str');
         const resumeAcceptBtn = document.getElementById('resume-accept-btn');
         const resumeDismissBtn = document.getElementById('resume-dismiss-btn');
+        const portraitNotice = document.getElementById('portrait-notice');
+        const btnForceLandscape = document.getElementById('btn-force-landscape');
 
         // Manifest & Sources (Primary HLS + Fallbacks)
         const primaryManifest = 'https://huggingface.co/datasets/camouflagechicken/BladeRunnerChunks/resolve/main/index.m3u8';
@@ -888,6 +982,7 @@
         let isSwiping = false;
         let storedVolume = 1.0;
         let hlsLevels = [];
+        let aspectMode = 'cover'; // Default to Edge-to-Edge Zoom Fill for modern smartphones
 
         // Single vs Double Click Handling for Video Area
         let clickTimer = null;
@@ -910,6 +1005,41 @@
             }
             return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
         }
+
+        // Lock Orientation to Landscape on Mobile Devices
+        async function lockLandscapeOrientation() {
+            try {
+                if (screen.orientation && screen.orientation.lock) {
+                    await screen.orientation.lock('landscape');
+                }
+            } catch (err) {
+                try {
+                    if (document.documentElement.requestFullscreen) {
+                        await document.documentElement.requestFullscreen();
+                        if (screen.orientation && screen.orientation.lock) {
+                            await screen.orientation.lock('landscape');
+                        }
+                    }
+                } catch (e) {}
+            }
+        }
+
+        btnForceLandscape.addEventListener('click', lockLandscapeOrientation);
+
+        // Aspect Ratio Toggle: Zoom Fill (Cover) vs Fit Screen (Contain)
+        function toggleAspectMode() {
+            if (aspectMode === 'cover') {
+                aspectMode = 'contain';
+                video.style.objectFit = 'contain';
+                showHud('📐', 'Aspect: Fit (Original)');
+            } else {
+                aspectMode = 'cover';
+                video.style.objectFit = 'cover';
+                showHud('↔️', 'Aspect: Zoom Fill (Edge-to-Edge)');
+            }
+        }
+
+        btnAspect.addEventListener('click', toggleAspectMode);
 
         // Show Center HUD Badge
         let hudTimeout = null;
@@ -982,6 +1112,7 @@
         // Instant Autoplay Logic (Unmuted first, then Muted fallback)
         function attemptInstantAutoplay() {
             checkSavedProgress();
+            lockLandscapeOrientation();
 
             const playPromise = video.play();
             if (playPromise !== undefined) {
@@ -1073,13 +1204,14 @@
         playerWrapper.addEventListener('click', (e) => {
             if (isScreenLocked) return;
 
-            // Ignore clicks on control panels, menus, sliders, toasts
+            // Ignore clicks on control panels, menus, sliders, toasts, notices
             if (e.target.closest('.controls-footer') || 
                 e.target.closest('.controls-header') || 
                 e.target.closest('.unmute-banner') || 
                 e.target.closest('.resume-toast') || 
                 e.target.closest('.lock-indicator') ||
                 e.target.closest('.menu-popup') ||
+                e.target.closest('.portrait-notice') ||
                 e.target.closest('.pill-btn')) {
                 return;
             }
@@ -1252,7 +1384,9 @@
         function toggleFullscreen() {
             if (isScreenLocked) return;
             if (!document.fullscreenElement) {
-                playerWrapper.requestFullscreen().catch(err => {});
+                playerWrapper.requestFullscreen().then(() => {
+                    lockLandscapeOrientation();
+                }).catch(err => {});
             } else {
                 document.exitFullscreen();
             }
@@ -1399,7 +1533,6 @@
                     btnPip.click();
                     break;
                 case 'Escape':
-                    // Dismiss menus if open
                     speedMenu.classList.remove('open');
                     qualityMenu.classList.remove('open');
                     break;
@@ -1407,8 +1540,17 @@
         });
 
         // Start initialization on window load
-        window.addEventListener('load', initPlayer);
+        window.addEventListener('load', () => {
+            initPlayer();
+            lockLandscapeOrientation();
+        });
     </script>
 </body>
 
 </html>
+
+
+
+
+
+
